@@ -1,41 +1,72 @@
-import { useState } from 'react'
-import { useJsApiLoader, GoogleMap } from '@react-google-maps/api'
+import React, { useEffect, useState } from 'react';
 
-const center = { lat: 40.8829378816515, lng: -98.37406855532743 }
- 
+function MapComponent() {
 
-const App = () => {
+  const [pathCoordinates, setPathCoordinates] = useState([]);
 
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.AIzaSyAbxFhk7ujGEOVsirxtumApUmvId1gSgWI,
-    libraries: ['places'],
-  })
+  const [polyline, setPolyline] = useState(null);
+
+  useEffect(() => {
+    function initMap() {
+      const map = new window.google.maps.Map(document.getElementById("map"), {
+        center: { lat: 40.8829378816515, lng: -98.37406855532743 },
+        zoom: 12,
+        mapTypeId: "roadmap",
+      });
+      console.log('working...')
+
+      // Fetch the CSV file
+      fetch('sample_race.csv')
+        .then((response) => response.text())
+        .then((data) => {
+          var lines = data.split('\n');
+          for (var i = 1; i < lines.length; i++) {
+            var parts = lines[i].split(',');
+            var lat = parseFloat(parts[2]);
+            var lon = parseFloat(parts[3]);
+            if (!isNaN(lat) && !isNaN(lon)) {
+              setPathCoordinates((pathCoordinates) => [...pathCoordinates, [lat, lon]]);
+              pathCoordinates.push(new window.google.maps.LatLng(lat, lon));
+            }
+          }
+
+          // Create a polyline
+          const newPolyline = new window.google.maps.Polyline({
+            path: pathCoordinates,
+            geodesic: true,
+            strokeColor: '#0096FF',
+            strokeOpacity: 1.0,
+            strokeWeight: 5,
+          });
+
+          newPolyline.setMap(map);
+          setPolyline(newPolyline);
+        });
+
+      // Initialize the map
+      window.google.maps.event.addDomListener(window, 'load', initMap);
+    }
+  }, []);
+
+  const deleteElements = () => {
+    // Modify this logic to delete the desired elements from pathCoordinates.
+    console.log(pathCoordinates[0])
+    setPathCoordinates(pathCoordinates => pathCoordinates.slice(2));
+    updatePolyline();
+  };
+
+  const updatePolyline = () => {
+    if (polyline) {
+      polyline.setPath(pathCoordinates);
+    }
+  };
 
   return (
-    // Initialize the map
-    <> 
-       
-        {/* Google Map Box */}
-        <GoogleMap
-          center={center}
-          zoom={15}
-          mapContainerStyle={{ width: '100%', height: '100%' }}
-          options={{
-            zoomControl: false,
-            streetViewControl: false,
-            mapTypeControl: false,
-            fullscreenControl: false,
-          }}
-          onLoad={map => setMap(map)}
-        >
-          <Marker position={center} />
-          {directionsResponse && (
-            <DirectionsRenderer directions={directionsResponse} />
-          )}
-        </GoogleMap>
-      
-    </>
-  )
+    <div>
+      <button onClick={deleteElements}>Delete Elements</button>
+      <div id="map" style={{ height: '600px', width: '100%' }}></div>
+    </div>
+  );
 }
 
-export default App
+export default MapComponent;
