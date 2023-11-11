@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 function MapComponent() {
-
-  const [pathCoordinates, setPathCoordinates] = useState([]);
-
-  const [polyline, setPolyline] = useState(null);
+  const [path, setPath] = useState(null);
 
   useEffect(() => {
     function initMap() {
@@ -13,25 +10,28 @@ function MapComponent() {
         zoom: 12,
         mapTypeId: "roadmap",
       });
-      console.log('working...')
 
       // Fetch the CSV file
       fetch('sample_race.csv')
         .then((response) => response.text())
         .then((data) => {
+          // Parse the CSV data
+          var pathCoordinates = [];
           var lines = data.split('\n');
           for (var i = 1; i < lines.length; i++) {
+            // Start from 1 to skip the header row
             var parts = lines[i].split(',');
+            var id = parseInt(parts[0]);
             var lat = parseFloat(parts[2]);
             var lon = parseFloat(parts[3]);
+            // console.log(lat, " + ", lon);
             if (!isNaN(lat) && !isNaN(lon)) {
-              setPathCoordinates((pathCoordinates) => [...pathCoordinates, [lat, lon]]);
               pathCoordinates.push(new window.google.maps.LatLng(lat, lon));
             }
           }
 
           // Create a polyline
-          const newPolyline = new window.google.maps.Polyline({
+          var polyline = new window.google.maps.Polyline({
             path: pathCoordinates,
             geodesic: true,
             strokeColor: '#0096FF',
@@ -39,32 +39,38 @@ function MapComponent() {
             strokeWeight: 5,
           });
 
-          newPolyline.setMap(map);
-          setPolyline(newPolyline);
+          // Set the path on the map
+          polyline.setMap(map);
+          setPath(polyline); // Store the polyline in state
         });
+    }
 
-      // Initialize the map
-      window.google.maps.event.addDomListener(window, 'load', initMap);
+    // Check if the Google Maps API has been loaded
+    if (window.google && window.google.maps) {
+      initMap();
+    } else {
+      // You can handle the case where the API hasn't loaded yet
+      console.log('Google Maps API is not loaded.');
     }
   }, []);
 
-  const deleteElements = () => {
-    // Modify this logic to delete the desired elements from pathCoordinates.
-    console.log(pathCoordinates[0])
-    setPathCoordinates(pathCoordinates => pathCoordinates.slice(2));
-    updatePolyline();
-  };
+  const handleRemoveFirst10 = () => {
+    if (path) {
+      // Get the current path
+      const currentPath = path.getPath().getArray();
 
-  const updatePolyline = () => {
-    if (polyline) {
-      polyline.setPath(pathCoordinates);
+      // Remove the first 10 elements
+      const newPath = currentPath.slice(10);
+
+      // Set the new path on the polyline
+      path.setPath(newPath);
     }
   };
 
   return (
     <div>
-      <button onClick={deleteElements}>Delete Elements</button>
       <div id="map" style={{ height: '600px', width: '100%' }}></div>
+      <button onClick={handleRemoveFirst10}>Remove First 10 Elements</button>
     </div>
   );
 }
